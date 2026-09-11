@@ -5,7 +5,7 @@ import {
   Search, Clock, Server, Activity, Globe, GraduationCap, 
   Ticket, Volume2, VolumeX, Star, Sparkles, Building2, Check,
   ChevronDown, ChevronUp, Users, MessageSquare, Flame, Send, 
-  TrendingUp, RefreshCw, Heart
+  TrendingUp, RefreshCw, Heart, Zap
 } from "lucide-react";
 import { UNIVERSITIES, filterUniversities, University, searchAllSites, SiteItem } from "@/data/universities";
 
@@ -72,6 +72,13 @@ export default function ServerTimePage() {
     min2Before: false,
     min3Before: false,
   });
+
+  // 클릭 타이밍 보정 (서버 도착 기준 골든타이밍 모드)
+  const [isLeadTimeEnabled, setIsLeadTimeEnabled] = useState(false);
+  const [customLeadMs, setCustomLeadMs] = useState(0);
+
+  const oneWayLatency = latency !== null ? Math.max(Math.round(latency / 2), 5) : 20;
+  const totalLeadOffset = isLeadTimeEnabled ? (oneWayLatency + customLeadMs) : 0;
 
   // University search and filter states
   const [uniSearch, setUniSearch] = useState("");
@@ -446,7 +453,7 @@ export default function ServerTimePage() {
       setCurrentTime(now);
 
       if (serverTimeOffset !== null && soundEnabled) {
-        const syncedTime = new Date(now.getTime() + serverTimeOffset);
+        const syncedTime = new Date(now.getTime() + serverTimeOffset + totalLeadOffset);
         const m = syncedTime.getMinutes();
         const s = syncedTime.getSeconds();
         const ms = syncedTime.getMilliseconds();
@@ -496,10 +503,10 @@ export default function ServerTimePage() {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [serverTimeOffset, soundEnabled, alarmSettings, playCountdownBeep, playReadyChime]);
+  }, [serverTimeOffset, totalLeadOffset, soundEnabled, alarmSettings, playCountdownBeep, playReadyChime]);
 
   const displayTime = serverTimeOffset !== null 
-    ? new Date(currentTime.getTime() + serverTimeOffset) 
+    ? new Date(currentTime.getTime() + serverTimeOffset + totalLeadOffset) 
     : currentTime;
 
   const pad = (num: number, size: number = 2) => num.toString().padStart(size, '0');
@@ -607,7 +614,9 @@ export default function ServerTimePage() {
       glowClass: "shadow-[0_0_90px_-5px_rgba(244,63,94,0.8)] animate-pulse",
     },
     0: {
-      label: "🎉 정각 OPEN! 지금 클릭!",
+      label: isLeadTimeEnabled 
+        ? `⚡ [골든타이밍 OPEN!] 지금 클릭하면 서버 정각 00.000초 1등 도착!` 
+        : "🎉 정각 OPEN! 지금 클릭!",
       textClass: "text-emerald-400 font-black",
       borderClass: "border-emerald-400",
       bgClass: "bg-emerald-950/60",
@@ -766,14 +775,70 @@ export default function ServerTimePage() {
               </div>
             ) : <div />}
             
-            <div className="flex flex-col items-end space-y-3">
-              <button 
-                onClick={toggleSound}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-full border transition-all cursor-pointer ${soundEnabled ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:bg-slate-700/50'}`}
-              >
-                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                <span className="text-sm font-semibold">{soundEnabled ? '알림 켜짐' : '알림 꺼짐'}</span>
-              </button>
+            <div className="flex flex-col items-end space-y-3 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center justify-end gap-2.5">
+                {/* ⚡ 골든타이밍 보정 토글 버튼 */}
+                <button 
+                  onClick={() => setIsLeadTimeEnabled(!isLeadTimeEnabled)}
+                  title="내 네트워크 편도 전송 시간을 시계에 미리 반영하여, 0초에 누르면 서버에 정각에 정확히 도착하도록 보정합니다."
+                  className={`flex items-center space-x-1.5 px-4 py-2.5 rounded-full border transition-all cursor-pointer ${
+                    isLeadTimeEnabled 
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_20px_-3px_rgba(245,158,11,0.4)]' 
+                      : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:bg-slate-700/50 hover:text-slate-200'
+                  }`}
+                >
+                  <Zap className={`w-4 h-4 ${isLeadTimeEnabled ? 'text-amber-400 fill-amber-400' : ''}`} />
+                  <span className="text-sm font-semibold">
+                    {isLeadTimeEnabled ? `골든타이밍 (+${totalLeadOffset}ms)` : '골든타이밍 보정'}
+                  </span>
+                </button>
+
+                {/* 사운드 토글 버튼 */}
+                <button 
+                  onClick={toggleSound}
+                  className={`flex items-center space-x-2 px-5 py-2.5 rounded-full border transition-all cursor-pointer ${soundEnabled ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:bg-slate-700/50 hover:text-slate-200'}`}
+                >
+                  {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                  <span className="text-sm font-semibold">{soundEnabled ? '알림 켜짐' : '알림 꺼짐'}</span>
+                </button>
+              </div>
+
+              {/* 골든타이밍 미세 조정 패널 (활성화 시 표시) */}
+              {isLeadTimeEnabled && (
+                <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-300 bg-amber-950/40 p-2.5 px-3.5 rounded-2xl border border-amber-500/30 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                  <span className="text-amber-300 font-semibold flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 fill-amber-400" />
+                    편도: +{oneWayLatency}ms
+                  </span>
+                  <span className="text-slate-600">|</span>
+                  <span className="text-slate-300">
+                    미세조정: <span className="font-mono font-bold text-amber-200">{customLeadMs >= 0 ? `+${customLeadMs}` : customLeadMs}ms</span>
+                  </span>
+                  <div className="flex items-center space-x-1 pl-1">
+                    <button
+                      onClick={() => setCustomLeadMs((prev) => prev - 10)}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
+                      title="10ms 늦추기"
+                    >
+                      -10ms
+                    </button>
+                    <button
+                      onClick={() => setCustomLeadMs(0)}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 hover:text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
+                      title="기본 편도 지연으로 초기화"
+                    >
+                      초기화
+                    </button>
+                    <button
+                      onClick={() => setCustomLeadMs((prev) => prev + 10)}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
+                      title="10ms 당기기"
+                    >
+                      +10ms
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {soundEnabled && (
                 <div className="flex flex-wrap justify-end gap-3 text-xs sm:text-sm text-slate-300 bg-slate-900/80 p-3 rounded-2xl border border-slate-700/50 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
@@ -806,6 +871,16 @@ export default function ServerTimePage() {
               )}
             </div>
           </div>
+
+          {/* 골든타이밍 보정 가동 중 안내 뱃지 */}
+          {isLeadTimeEnabled && (
+            <div className="mb-4 px-4 sm:px-5 py-2 rounded-full border border-amber-500/40 bg-amber-950/40 text-amber-300 text-xs sm:text-sm font-semibold tracking-wide flex items-center space-x-2 animate-in fade-in shadow-[0_0_30px_-8px_rgba(245,158,11,0.3)]">
+              <Zap className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse flex-shrink-0" />
+              <span>
+                <strong>골든타이밍 선행 보정 (+{totalLeadOffset}ms):</strong> 시계 <strong>00.000초가 되는 순간</strong> 클릭하면 인터넷 망을 타고 서버 정각 00.000초에 1등 도착!
+              </span>
+            </div>
+          )}
 
           {/* 59분 준비 알림 뱃지 (정각 1분 전) */}
           {isPrepTime && !activeAlert && (
@@ -843,7 +918,7 @@ export default function ServerTimePage() {
             )}
           </div>
 
-          <div className="mt-8 flex items-center justify-center space-x-6 text-sm">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${isTicking ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
               <span className="text-slate-400">
@@ -851,9 +926,18 @@ export default function ServerTimePage() {
               </span>
             </div>
             {isTicking && latency !== null && (
-              <div className="flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-slate-500" />
-                <span className="text-slate-400">Latency: <span className="text-slate-300 font-mono">{latency}ms</span></span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-slate-500" />
+                  <span className="text-slate-400">Latency: <span className="text-slate-300 font-mono">{latency}ms</span></span>
+                  <span className="text-slate-500 text-xs">(편도 ~{oneWayLatency}ms)</span>
+                </div>
+                {isLeadTimeEnabled && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-xs flex items-center gap-1 font-semibold">
+                    <Zap className="w-3 h-3 fill-amber-300" />
+                    +{totalLeadOffset}ms 선행 보정 적용 중
+                  </span>
+                )}
               </div>
             )}
           </div>
