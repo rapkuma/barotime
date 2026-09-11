@@ -90,7 +90,7 @@ export default function ServerTimePage() {
   const [nickname, setNickname] = useState("");
   const [cheerContent, setCheerContent] = useState("");
   const [isSubmittingCheer, setIsSubmittingCheer] = useState(false);
-  const [currentTargetName, setCurrentTargetName] = useState("바로 (BARO)");
+  const [currentTargetName, setCurrentTargetName] = useState("바로타임 (BAROTIME)");
 
   const mainSuggestions = useMemo(() => {
     if (!url.trim()) return [];
@@ -565,8 +565,8 @@ export default function ServerTimePage() {
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight bg-gradient-to-br from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center justify-center gap-3">
-            <span>바로</span>
-            <span className="text-3xl sm:text-5xl font-mono font-semibold text-indigo-400 tracking-wider">BARO</span>
+            <span>바로타임</span>
+            <span className="text-3xl sm:text-5xl font-mono font-semibold text-indigo-400 tracking-wider">BAROTIME</span>
           </h1>
           <p className="text-slate-400 max-w-lg mx-auto text-lg">
             오차 없이 바로 맞는 실시간 서버시간 · 티켓팅 & 수강신청

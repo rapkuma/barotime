@@ -162,8 +162,8 @@ export async function POST(request: NextRequest) {
 
       await supabase.from("active_sessions").upsert({
         id: sessionId,
-        target_name: targetName || "바로 (BARO)",
-        target_url: targetUrl || "https://barotime.com",
+        target_name: targetName || "바로타임 (BAROTIME)",
+        target_url: targetUrl || "https://barotime-r9aw.vercel.app",
         last_active: new Date().toISOString(),
       });
 

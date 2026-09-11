@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "바로 (BARO) - 오차 없이 바로 맞는 초정밀 서버시간",
-  description: "인터파크, 코레일, 멜론, 전국 대학교 수강신청 등 0.001초 밀리초 틱오버 초정밀 실시간 서버시간 측정 서비스",
+  title: "바로타임 (BAROTIME) - 오차 없이 바로 맞는 초정밀 서버시간",
+  description: "인터파크, 코레일, 멜론, 전국 대학교 수강신청 등 0.001초 밀리초 틱오버 초정밀 실시간 서버시간 & 커뮤니티",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
