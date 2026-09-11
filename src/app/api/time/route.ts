@@ -5,16 +5,21 @@ import http from "http";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 50 });
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 50 });
+
 function doHeadRequest(urlStr: string): Promise<{ serverTime: number; latency: number; adjustedTime: number }> {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(urlStr);
     const client = urlObj.protocol === "https:" ? https : http;
+    const agent = urlObj.protocol === "https:" ? httpsAgent : httpAgent;
     const start = Date.now();
 
     const req = client.request(
       urlStr,
       {
         method: "HEAD",
+        agent,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept": "*/*",

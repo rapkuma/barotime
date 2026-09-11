@@ -375,7 +375,7 @@ export default function ServerTimePage() {
           const estimatedTickTimeLocal = reqEnd - (roundtrip / 2);
           tickOverOffset = serverSecond - estimatedTickTimeLocal;
           foundTick = true;
-          setLatency(roundtrip);
+          setLatency(data.latency || roundtrip);
           finalTargetUrl = data.targetUrl;
           break;
         }
@@ -395,7 +395,7 @@ export default function ServerTimePage() {
         const roundtrip = reqEnd - reqStart;
         const estimatedServerTime = data.adjustedTime + 500 + (roundtrip / 2);
         setTargetUrl(data.targetUrl);
-        setLatency(roundtrip);
+        setLatency(data.latency || roundtrip);
         setServerTimeOffset(estimatedServerTime - reqEnd);
       }
 
