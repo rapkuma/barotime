@@ -274,14 +274,19 @@ export default function ServerTimePage() {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    // Rising countdown pitch: 5 -> 440Hz, 4 -> 494Hz, 3 -> 554Hz, 2 -> 659Hz, 1 -> 740Hz, 0 -> 880Hz
+    // 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 Rising countdown pitch
     const freqs: Record<number, number> = {
-      5: 440,
-      4: 494,
-      3: 554,
-      2: 659,
-      1: 740,
-      0: 880,
+      10: 392, // G4 (솔)
+      9: 415,  // G#4 (솔#)
+      8: 440,  // A4 (라)
+      7: 494,  // B4 (시)
+      6: 523,  // C5 (도)
+      5: 587,  // D5 (레)
+      4: 659,  // E5 (미)
+      3: 698,  // F5 (파)
+      2: 784,  // G5 (솔)
+      1: 880,  // A5 (라)
+      0: 1046, // C6 (높은 도)
     };
 
     const freq = freqs[step] ?? 440;
@@ -297,6 +302,28 @@ export default function ServerTimePage() {
 
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
+  }, []);
+
+  const playReadyChime = useCallback(() => {
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") ctx.resume();
+
+    // 59분 정각 1분 전 준비 알림 2연타 차임벨 (E5 -> A5 딩-동)
+    const now = ctx.currentTime;
+    [659, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + i * 0.2);
+      gain.gain.setValueAtTime(0, now + i * 0.2);
+      gain.gain.linearRampToValueAtTime(0.5, now + i * 0.2 + 0.02);
+      gain.gain.linearRampToValueAtTime(0, now + i * 0.2 + 0.4);
+      osc.start(now + i * 0.2);
+      osc.stop(now + i * 0.2 + 0.4);
+    });
   }, []);
 
   const fetchServerTime = async (e?: React.FormEvent, directUrl?: string, uniObj?: University) => {
@@ -431,21 +458,26 @@ export default function ServerTimePage() {
           if (lastBeepSecondRef.current !== currentTargetSec) {
             lastBeepSecondRef.current = currentTargetSec;
 
-            // 5, 4, 3, 2, 1, 0 step countdown
+            // 59분 정각 준비 알림 (정각 1분 전 진입 시 차임벨 딩-동)
+            if (alarmSettings.onTheHour && m === 59 && currentTargetSec === 0) {
+              playReadyChime();
+            }
+
+            // 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 step countdown
             const step = currentTargetSec === 0 ? 0 : 60 - currentTargetSec;
             
-            if (step >= 0 && step <= 5) {
+            if (step >= 0 && step <= 10) {
               let shouldBeep = false;
 
               if (alarmSettings.everyMinute) {
                 shouldBeep = true;
-              } else if (alarmSettings.onTheHour && ((m === 59 && currentTargetSec >= 55) || (m === 0 && currentTargetSec === 0))) {
+              } else if (alarmSettings.onTheHour && ((m === 59 && currentTargetSec >= 50) || (m === 0 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min1Before && ((m === 58 && currentTargetSec >= 55) || (m === 59 && currentTargetSec === 0))) {
+              } else if (alarmSettings.min1Before && ((m === 58 && currentTargetSec >= 50) || (m === 59 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min2Before && ((m === 57 && currentTargetSec >= 55) || (m === 58 && currentTargetSec === 0))) {
+              } else if (alarmSettings.min2Before && ((m === 57 && currentTargetSec >= 50) || (m === 58 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min3Before && ((m === 56 && currentTargetSec >= 55) || (m === 57 && currentTargetSec === 0))) {
+              } else if (alarmSettings.min3Before && ((m === 56 && currentTargetSec >= 50) || (m === 57 && currentTargetSec === 0))) {
                 shouldBeep = true;
               }
 
@@ -464,7 +496,7 @@ export default function ServerTimePage() {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [serverTimeOffset, soundEnabled, alarmSettings, playCountdownBeep]);
+  }, [serverTimeOffset, soundEnabled, alarmSettings, playCountdownBeep, playReadyChime]);
 
   const displayTime = serverTimeOffset !== null 
     ? new Date(currentTime.getTime() + serverTimeOffset) 
@@ -479,69 +511,107 @@ export default function ServerTimePage() {
 
   const isTicking = serverTimeOffset !== null;
 
-  // 5, 4, 3, 2, 1, 0 Countdown Color & Badge Alert Configurations (기본: 정각 직전 5초~정각)
+  // 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 Countdown Color & Badge Alert Configurations (정각 직전 10초~정각)
   const minNum = displayTime.getMinutes();
   const secNum = displayTime.getSeconds();
-  const isCountdownSec = secNum >= 55 || secNum === 0;
+  const isCountdownSec = secNum >= 50 || secNum === 0;
   const countdownStep = secNum === 0 ? 0 : 60 - secNum;
+
+  // 59분 정각 1분 전 준비 상태 (59분 00초 ~ 49초)
+  const isPrepTime = isTicking && alarmSettings.onTheHour && minNum === 59 && secNum < 50;
 
   let isAlertTime = false;
   if (alarmSettings.everyMinute) {
     isAlertTime = true;
-  } else if (alarmSettings.onTheHour && ((minNum === 59 && secNum >= 55) || (minNum === 0 && secNum === 0))) {
+  } else if (alarmSettings.onTheHour && ((minNum === 59 && secNum >= 50) || (minNum === 0 && secNum === 0))) {
     isAlertTime = true;
-  } else if (alarmSettings.min1Before && ((minNum === 58 && secNum >= 55) || (minNum === 59 && secNum === 0))) {
+  } else if (alarmSettings.min1Before && ((minNum === 58 && secNum >= 50) || (minNum === 59 && secNum === 0))) {
     isAlertTime = true;
-  } else if (alarmSettings.min2Before && ((minNum === 57 && secNum >= 55) || (minNum === 58 && secNum === 0))) {
+  } else if (alarmSettings.min2Before && ((minNum === 57 && secNum >= 50) || (minNum === 58 && secNum === 0))) {
     isAlertTime = true;
-  } else if (alarmSettings.min3Before && ((minNum === 56 && secNum >= 55) || (minNum === 57 && secNum === 0))) {
+  } else if (alarmSettings.min3Before && ((minNum === 56 && secNum >= 50) || (minNum === 57 && secNum === 0))) {
     isAlertTime = true;
   }
 
   const isCountdown = isTicking && isAlertTime && isCountdownSec;
 
   const countdownConfigs: Record<number, { label: string; textClass: string; borderClass: string; bgClass: string; glowClass: string }> = {
-    5: {
-      label: "⚡ 5초 전! 집중",
-      textClass: "text-amber-400",
+    10: {
+      label: "⚡ 10초 전! 예매창 준비",
+      textClass: "text-blue-400 font-bold",
+      borderClass: "border-blue-500/50",
+      bgClass: "bg-blue-950/30",
+      glowClass: "shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)]",
+    },
+    9: {
+      label: "⚡ 9초 전! 마우스 정렬",
+      textClass: "text-cyan-400 font-bold",
+      borderClass: "border-cyan-500/50",
+      bgClass: "bg-cyan-950/30",
+      glowClass: "shadow-[0_0_42px_-10px_rgba(6,182,212,0.3)]",
+    },
+    8: {
+      label: "⚡ 8초 전! 심호흡",
+      textClass: "text-teal-400 font-bold",
+      borderClass: "border-teal-500/50",
+      bgClass: "bg-teal-950/30",
+      glowClass: "shadow-[0_0_45px_-10px_rgba(20,184,166,0.3)]",
+    },
+    7: {
+      label: "⚡ 7초 전! 화면 주시",
+      textClass: "text-yellow-400 font-bold",
+      borderClass: "border-yellow-500/50",
+      bgClass: "bg-yellow-950/30",
+      glowClass: "shadow-[0_0_48px_-10px_rgba(234,179,8,0.3)]",
+    },
+    6: {
+      label: "⚡ 6초 전! 손가락 올리기",
+      textClass: "text-amber-400 font-bold",
       borderClass: "border-amber-500/50",
       bgClass: "bg-amber-950/30",
-      glowClass: "shadow-[0_0_50px_-10px_rgba(245,158,11,0.3)]",
+      glowClass: "shadow-[0_0_50px_-10px_rgba(245,158,11,0.35)]",
     },
-    4: {
-      label: "⚡ 4초 전! 손가락 준비",
-      textClass: "text-amber-300",
+    5: {
+      label: "🔥 5초 전! 초집중",
+      textClass: "text-amber-300 font-bold",
       borderClass: "border-amber-500/60",
       bgClass: "bg-amber-950/40",
       glowClass: "shadow-[0_0_55px_-10px_rgba(245,158,11,0.4)]",
     },
-    3: {
-      label: "🔥 3초 전! 예매창 주시",
-      textClass: "text-orange-400",
+    4: {
+      label: "🔥 4초 전! 클릭 대기",
+      textClass: "text-orange-400 font-bold",
       borderClass: "border-orange-500/70",
       bgClass: "bg-orange-950/50",
-      glowClass: "shadow-[0_0_60px_-10px_rgba(249,115,22,0.4)] animate-pulse",
+      glowClass: "shadow-[0_0_60px_-10px_rgba(249,115,22,0.4)]",
+    },
+    3: {
+      label: "🚨 3초 전! 예매창 주시",
+      textClass: "text-red-400 font-extrabold",
+      borderClass: "border-red-500/80",
+      bgClass: "bg-red-950/50",
+      glowClass: "shadow-[0_0_65px_-10px_rgba(239,68,68,0.5)] animate-pulse",
     },
     2: {
       label: "🚨 2초 전! 클릭 대기!",
-      textClass: "text-red-400",
-      borderClass: "border-red-500/80",
-      bgClass: "bg-red-950/50",
-      glowClass: "shadow-[0_0_70px_-10px_rgba(239,68,68,0.5)] animate-pulse",
+      textClass: "text-rose-400 font-extrabold",
+      borderClass: "border-rose-500/90",
+      bgClass: "bg-rose-950/60",
+      glowClass: "shadow-[0_0_75px_-10px_rgba(244,63,94,0.6)] animate-pulse",
     },
     1: {
       label: "🚨 1초 전! 정각 직전!",
       textClass: "text-rose-400 font-black",
       borderClass: "border-rose-500",
-      bgClass: "bg-rose-950/60",
-      glowClass: "shadow-[0_0_90px_-5px_rgba(244,63,94,0.7)] animate-pulse",
+      bgClass: "bg-rose-950/70",
+      glowClass: "shadow-[0_0_90px_-5px_rgba(244,63,94,0.8)] animate-pulse",
     },
     0: {
       label: "🎉 정각 OPEN! 지금 클릭!",
       textClass: "text-emerald-400 font-black",
       borderClass: "border-emerald-400",
-      bgClass: "bg-emerald-950/50",
-      glowClass: "shadow-[0_0_90px_-5px_rgba(52,211,153,0.7)]",
+      bgClass: "bg-emerald-950/60",
+      glowClass: "shadow-[0_0_90px_-5px_rgba(52,211,153,0.8)]",
     },
   };
 
@@ -709,13 +779,8 @@ export default function ServerTimePage() {
                 <div className="flex flex-wrap justify-end gap-3 text-xs sm:text-sm text-slate-300 bg-slate-900/80 p-3 rounded-2xl border border-slate-700/50 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
                   <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white transition-colors">
                     <input type="checkbox" className="rounded border-slate-600 text-indigo-500 focus:ring-indigo-500/20 bg-slate-800" 
-                      checked={alarmSettings.everyMinute} onChange={(e) => setAlarmSettings({...alarmSettings, everyMinute: e.target.checked})} />
-                    <span>매분마다</span>
-                  </label>
-                  <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white transition-colors">
-                    <input type="checkbox" className="rounded border-slate-600 text-indigo-500 focus:ring-indigo-500/20 bg-slate-800" 
                       checked={alarmSettings.onTheHour} onChange={(e) => setAlarmSettings({...alarmSettings, onTheHour: e.target.checked})} />
-                    <span>정각 (00분)</span>
+                    <span className="font-semibold text-emerald-400">정각 (00분)</span>
                   </label>
                   <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white transition-colors">
                     <input type="checkbox" className="rounded border-slate-600 text-indigo-500 focus:ring-indigo-500/20 bg-slate-800" 
@@ -732,12 +797,24 @@ export default function ServerTimePage() {
                       checked={alarmSettings.min3Before} onChange={(e) => setAlarmSettings({...alarmSettings, min3Before: e.target.checked})} />
                     <span>3분 전</span>
                   </label>
+                  <label className="flex items-center space-x-1.5 cursor-pointer hover:text-white transition-colors opacity-75">
+                    <input type="checkbox" className="rounded border-slate-600 text-indigo-500 focus:ring-indigo-500/20 bg-slate-800" 
+                      checked={alarmSettings.everyMinute} onChange={(e) => setAlarmSettings({...alarmSettings, everyMinute: e.target.checked})} />
+                    <span>매분마다</span>
+                  </label>
                 </div>
               )}
             </div>
           </div>
 
-          {/* 5, 4, 3, 2, 1, 0 Dynamic Countdown Alert Badge */}
+          {/* 59분 준비 알림 뱃지 (정각 1분 전) */}
+          {isPrepTime && !activeAlert && (
+            <div className="mb-4 px-5 py-2 rounded-full border border-indigo-500/50 bg-indigo-950/40 text-indigo-300 text-sm sm:text-base font-bold tracking-wide flex items-center space-x-2 animate-in zoom-in-95 duration-150 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]">
+              <span>🔔 59분! 정각 1분 전 준비하세요 (50초부터 10초 카운트다운)</span>
+            </div>
+          )}
+
+          {/* 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 Dynamic Countdown Alert Badge */}
           {activeAlert && (
             <div className={`mb-4 px-5 py-2 rounded-full border ${activeAlert.borderClass} ${activeAlert.bgClass} ${activeAlert.textClass} text-base sm:text-lg font-extrabold tracking-wide flex items-center space-x-2 animate-in zoom-in-95 duration-150`}>
               <span>{activeAlert.label}</span>
