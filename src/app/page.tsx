@@ -66,7 +66,7 @@ export default function ServerTimePage() {
   const [error, setError] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [alarmSettings, setAlarmSettings] = useState({
-    everyMinute: true,
+    everyMinute: false, // 기본은 정각 알림만 활성화
     onTheHour: true,
     min1Before: false,
     min2Before: false,
@@ -439,13 +439,13 @@ export default function ServerTimePage() {
 
               if (alarmSettings.everyMinute) {
                 shouldBeep = true;
-              } else if (alarmSettings.onTheHour && currentTargetMin === 0) {
+              } else if (alarmSettings.onTheHour && ((m === 59 && currentTargetSec >= 55) || (m === 0 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min1Before && currentTargetMin === 59) {
+              } else if (alarmSettings.min1Before && ((m === 58 && currentTargetSec >= 55) || (m === 59 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min2Before && currentTargetMin === 58) {
+              } else if (alarmSettings.min2Before && ((m === 57 && currentTargetSec >= 55) || (m === 58 && currentTargetSec === 0))) {
                 shouldBeep = true;
-              } else if (alarmSettings.min3Before && currentTargetMin === 57) {
+              } else if (alarmSettings.min3Before && ((m === 56 && currentTargetSec >= 55) || (m === 57 && currentTargetSec === 0))) {
                 shouldBeep = true;
               }
 
@@ -479,10 +479,26 @@ export default function ServerTimePage() {
 
   const isTicking = serverTimeOffset !== null;
 
-  // 5, 4, 3, 2, 1, 0 Countdown Color & Badge Alert Configurations
+  // 5, 4, 3, 2, 1, 0 Countdown Color & Badge Alert Configurations (기본: 정각 직전 5초~정각)
+  const minNum = displayTime.getMinutes();
   const secNum = displayTime.getSeconds();
-  const isCountdown = isTicking && (secNum >= 55 || secNum === 0);
+  const isCountdownSec = secNum >= 55 || secNum === 0;
   const countdownStep = secNum === 0 ? 0 : 60 - secNum;
+
+  let isAlertTime = false;
+  if (alarmSettings.everyMinute) {
+    isAlertTime = true;
+  } else if (alarmSettings.onTheHour && ((minNum === 59 && secNum >= 55) || (minNum === 0 && secNum === 0))) {
+    isAlertTime = true;
+  } else if (alarmSettings.min1Before && ((minNum === 58 && secNum >= 55) || (minNum === 59 && secNum === 0))) {
+    isAlertTime = true;
+  } else if (alarmSettings.min2Before && ((minNum === 57 && secNum >= 55) || (minNum === 58 && secNum === 0))) {
+    isAlertTime = true;
+  } else if (alarmSettings.min3Before && ((minNum === 56 && secNum >= 55) || (minNum === 57 && secNum === 0))) {
+    isAlertTime = true;
+  }
+
+  const isCountdown = isTicking && isAlertTime && isCountdownSec;
 
   const countdownConfigs: Record<number, { label: string; textClass: string; borderClass: string; bgClass: string; glowClass: string }> = {
     5: {
