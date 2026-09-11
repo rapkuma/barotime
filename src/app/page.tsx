@@ -5,7 +5,7 @@ import {
   Search, Clock, Server, Activity, Globe, GraduationCap, 
   Ticket, Volume2, VolumeX, Star, Sparkles, Building2, Check,
   ChevronDown, ChevronUp, Users, MessageSquare, Flame, Send, 
-  TrendingUp, RefreshCw, Heart, Zap
+  TrendingUp, RefreshCw, Heart, Zap, HelpCircle
 } from "lucide-react";
 import { UNIVERSITIES, filterUniversities, University, searchAllSites, SiteItem } from "@/data/universities";
 
@@ -76,6 +76,7 @@ export default function ServerTimePage() {
   // 클릭 타이밍 보정 (서버 도착 기준 골든타이밍 모드)
   const [isLeadTimeEnabled, setIsLeadTimeEnabled] = useState(false);
   const [customLeadMs, setCustomLeadMs] = useState(0);
+  const [showLeadInfo, setShowLeadInfo] = useState(false);
 
   const oneWayLatency = latency !== null ? Math.max(Math.round(latency / 2), 5) : 20;
   const totalLeadOffset = isLeadTimeEnabled ? (oneWayLatency + customLeadMs) : 0;
@@ -805,38 +806,103 @@ export default function ServerTimePage() {
 
               {/* 골든타이밍 미세 조정 패널 (활성화 시 표시) */}
               {isLeadTimeEnabled && (
-                <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-300 bg-amber-950/40 p-2.5 px-3.5 rounded-2xl border border-amber-500/30 backdrop-blur-md animate-in fade-in slide-in-from-top-2">
-                  <span className="text-amber-300 font-semibold flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5 fill-amber-400" />
-                    편도: +{oneWayLatency}ms
-                  </span>
-                  <span className="text-slate-600">|</span>
-                  <span className="text-slate-300">
-                    미세조정: <span className="font-mono font-bold text-amber-200">{customLeadMs >= 0 ? `+${customLeadMs}` : customLeadMs}ms</span>
-                  </span>
-                  <div className="flex items-center space-x-1 pl-1">
+                <div className="w-full sm:max-w-md flex flex-col space-y-2.5 text-xs text-slate-300 bg-amber-950/40 p-3 sm:p-3.5 rounded-2xl border border-amber-500/30 backdrop-blur-md animate-in fade-in slide-in-from-top-2 shadow-lg">
+                  {/* 상단 헤더 & 설명 토글 */}
+                  <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                    <div className="flex items-center space-x-1.5">
+                      <Zap className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span className="font-bold text-amber-300 text-sm">
+                        골든타이밍: 총 +{totalLeadOffset}ms 선행
+                      </span>
+                    </div>
                     <button
-                      onClick={() => setCustomLeadMs((prev) => prev - 10)}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
-                      title="10ms 늦추기"
+                      onClick={() => setShowLeadInfo(!showLeadInfo)}
+                      className="text-amber-400/90 hover:text-amber-300 flex items-center gap-1 text-[11px] underline cursor-pointer"
                     >
-                      -10ms
-                    </button>
-                    <button
-                      onClick={() => setCustomLeadMs(0)}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 hover:text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
-                      title="기본 편도 지연으로 초기화"
-                    >
-                      초기화
-                    </button>
-                    <button
-                      onClick={() => setCustomLeadMs((prev) => prev + 10)}
-                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
-                      title="10ms 당기기"
-                    >
-                      +10ms
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      {showLeadInfo ? "설명 닫기" : "순발력 보정이란?"}
                     </button>
                   </div>
+
+                  {/* 세부 항목 (네트워크 편도 + 손 반응속도) */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center space-x-1.5 text-slate-300">
+                      <span className="text-slate-400">네트워크 편도:</span>
+                      <span className="font-mono font-bold text-amber-400">+{oneWayLatency}ms</span>
+                      <span className="text-slate-600">+</span>
+                      <span className="text-slate-400">손 순발력:</span>
+                      <span className="font-mono font-bold text-emerald-400">
+                        {customLeadMs >= 0 ? `+${customLeadMs}` : customLeadMs}ms
+                      </span>
+                    </div>
+
+                    {/* -10 / +10 스텝 버튼 */}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => setCustomLeadMs((prev) => prev - 10)}
+                        className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
+                        title="10ms 늦추기"
+                      >
+                        -10ms
+                      </button>
+                      <button
+                        onClick={() => setCustomLeadMs((prev) => prev + 10)}
+                        className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer"
+                        title="10ms 당기기"
+                      >
+                        +10ms
+                      </button>
+                      <button
+                        onClick={() => setCustomLeadMs(0)}
+                        className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-400 hover:text-slate-200 font-mono active:scale-95 transition-transform cursor-pointer text-[11px]"
+                        title="기본값(0ms)으로 초기화"
+                      >
+                        초기화
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 원클릭 순발력 단위 프리셋 (0, 10, 20, 30, 50ms) */}
+                  <div className="flex items-center space-x-1 pt-1 overflow-x-auto">
+                    <span className="text-slate-400 text-[11px] whitespace-nowrap mr-1">순발력 단위:</span>
+                    {[
+                      { ms: 0, label: "기본(0)" },
+                      { ms: 10, label: "+10ms" },
+                      { ms: 20, label: "+20ms(추천)" },
+                      { ms: 30, label: "+30ms" },
+                      { ms: 50, label: "+50ms" },
+                    ].map((preset) => (
+                      <button
+                        key={preset.ms}
+                        onClick={() => setCustomLeadMs(preset.ms)}
+                        className={`px-2 py-0.5 rounded-md text-xs font-mono transition-all cursor-pointer whitespace-nowrap ${
+                          customLeadMs === preset.ms
+                            ? "bg-amber-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 설명 박스 (토글) */}
+                  {showLeadInfo && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-slate-900/90 border border-amber-500/20 text-slate-300 text-[11px] space-y-1.5 leading-relaxed animate-in fade-in">
+                      <p className="font-semibold text-amber-300 flex items-center gap-1">
+                        💡 "순발력(손 반응속도) 보정"이란?
+                      </p>
+                      <p className="text-slate-300">
+                        • <strong>네트워크 편도 (+{oneWayLatency}ms)</strong>: 내 PC에서 서버까지 광케이블을 타고 가는 물리적 시간 (자동 계산)
+                      </p>
+                      <p className="text-slate-300">
+                        • <strong>손 순발력·인지 속도 ({customLeadMs >= 0 ? `+${customLeadMs}` : customLeadMs}ms)</strong>: 시계의 0초를 <strong>눈으로 보고 손가락으로 마우스를 누르기까지 걸리는 시간(반사신경/인풋랙)</strong>입니다.
+                      </p>
+                      <p className="text-emerald-400 font-medium">
+                        👉 0초를 확인하고 누르면 항상 0.02초~0.05초 뒤늦게 눌리는 분들은 <strong>+20ms 또는 +30ms</strong>를 선택하시면, 시계가 그만큼 앞서가서 내가 눌렀을 때 목표 서버에 정확히 00.000초 정각 1등으로 도착합니다!
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
